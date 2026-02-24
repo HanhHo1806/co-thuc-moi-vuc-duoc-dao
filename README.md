@@ -78,15 +78,56 @@ npm run dev
 
 Visit http://localhost:3000
 
-### Environment Variables
+### 🗄️ Supabase Setup (step-by-step)
+
+This app uses [Supabase](https://supabase.com) as its PostgreSQL database and authentication provider. Follow these steps to get your environment variables.
+
+#### 1 — Create a free Supabase project
+
+1. Go to **https://supabase.com** and sign in (GitHub login works perfectly).
+2. Click **"New project"**, give it a name, set a **strong database password** (save it somewhere safe!), choose the region nearest to you, then click **"Create new project"**.
+3. Wait about 2 minutes while Supabase provisions your database.
+
+#### 2 — Get your API keys
+
+Open your project, then go to **Project Settings → API**:
+
+| Variable | Where to find it |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | **Project URL** — looks like `https://xxxxxxxxxxxxxxxxxxxx.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | **Project API keys → anon / public** — the long JWT labelled "anon public" (safe to use in browser) |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Project API keys → service_role / secret** — ⚠️ keep this secret, never commit it |
+
+#### 3 — Get your database connection strings
+
+Go to **Project Settings → Database → Connection string → URI**:
+
+| Variable | Where to find it |
+|---|---|
+| `DATABASE_URL` | Switch to the **Transaction** pooler (port **6543**). Copy the URI and replace `[YOUR-PASSWORD]` with your database password. Add `?pgbouncer=true` at the end. |
+| `DIRECT_URL` | Switch to the **Session** pooler or use the **Direct connection** (port **5432**). Copy the URI and replace `[YOUR-PASSWORD]` with your database password. No `?pgbouncer=true` needed. |
+
+> **Why two URLs?**  
+> Prisma uses `DATABASE_URL` (PgBouncer pooled) at runtime for fast connections, and `DIRECT_URL` (direct) only when running `prisma migrate` because migrations use prepared statements that PgBouncer doesn't support.
+
+#### 4 — Fill in your `.env` file
+
+```bash
+cp .env.example .env
+# Open .env and replace each placeholder with the real value
+```
+
+Your filled-in `.env` should look like:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-DATABASE_URL=postgresql://postgres:[password]@db.[project].supabase.co:5432/postgres?pgbouncer=true
-DIRECT_URL=postgresql://postgres:[password]@db.[project].supabase.co:5432/postgres
+NEXT_PUBLIC_SUPABASE_URL=https://abcdefghijklmnop.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFiY2RlZmdoaWprbG1ub3AiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTY4MDAwMDAwMCwiZXhwIjoxOTk1MDAwMDAwfQ.XXXX
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFiY2RlZmdoaWprbG1ub3AiLCJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNjgwMDAwMDAwLCJleHAiOjE5OTUwMDAwMDB9.XXXX
+DATABASE_URL=postgresql://postgres.abcdefghijklmnop:MyStr0ngP@ssw0rd@aws-0-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true
+DIRECT_URL=postgresql://postgres:MyStr0ngP@ssw0rd@db.abcdefghijklmnop.supabase.co:5432/postgres
 ```
+
+> 📝 See `.env.example` in the repo root for additional inline comments on every variable.
 
 ---
 
