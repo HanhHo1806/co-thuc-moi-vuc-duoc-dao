@@ -1,0 +1,308 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum CertificationCategory {
+  NETWORKING
+  SECURITY
+  CLOUD
+  DEVOPS
+}
+
+enum LearningPathStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum SessionType {
+  STUDY
+  LAB
+  QUIZ
+  FEYNMAN_WRITE
+  DEBUG_CHALLENGE
+  TEACH
+  REVIEW
+}
+
+enum CuisineType {
+  VIETNAMESE
+  JAPANESE
+  KOREAN
+  THAI
+  INDIAN
+  MEXICAN
+  GENERAL
+}
+
+enum FoodRarity {
+  COMMON
+  UNCOMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
+
+enum FoodCategory {
+  RICE
+  NOODLE
+  BREAD
+  MEAT
+  SEAFOOD
+  VEGETABLE
+  DESSERT
+  DRINK
+  FEAST
+}
+
+enum AchievementConditionType {
+  STREAK
+  CALORIES
+  SESSIONS
+  CERT_COMPLETE
+  QUIZ_SCORE
+  FEYNMAN_COUNT
+}
+
+model User {
+  id                  String   @id @default(uuid())
+  email               String   @unique
+  displayName         String
+  avatarUrl           String?
+  githubUsername      String?
+  currentStreak       Int      @default(0)
+  longestStreak       Int      @default(0)
+  totalCaloriesEarned Int      @default(0)
+  currentLevel        Int      @default(1)
+  xpPoints            Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  learningPaths   LearningPath[]
+  studySessions   StudySession[]
+  earnedMeals     EarnedMeal[]
+  flashcards      Flashcard[]
+  feynmanEntries  FeynmanEntry[]
+  quizzes         Quiz[]
+  userAchievements UserAchievement[]
+  dailyLogs       DailyLog[]
+
+  @@map("users")
+}
+
+model Certification {
+  id           String                @id @default(uuid())
+  name         String
+  category     CertificationCategory
+  cuisineTheme String
+  totalTopics  Int
+  iconUrl      String?
+  colorHex     String
+  description  String
+
+  learningPaths LearningPath[]
+  topics        Topic[]
+
+  @@map("certifications")
+}
+
+model LearningPath {
+  id                   String             @id @default(uuid())
+  userId               String
+  certificationId      String
+  status               LearningPathStatus @default(NOT_STARTED)
+  startedAt            DateTime?
+  targetCompletionDate DateTime?
+  completedAt          DateTime?
+  progressPercentage   Float              @default(0)
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  certification Certification @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+
+  @@map("learningPaths")
+}
+
+model Topic {
+  id              String @id @default(uuid())
+  certificationId String
+  weekNumber      Int
+  name            String
+  description     String
+  difficulty      Int
+  estimatedHours  Float
+  orderIndex      Int
+
+  certification  Certification  @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+  studySessions  StudySession[]
+  flashcards     Flashcard[]
+  feynmanEntries FeynmanEntry[]
+  quizzes        Quiz[]
+
+  @@map("topics")
+}
+
+model StudySession {
+  id                String      @id @default(uuid())
+  userId            String
+  topicId           String?
+  sessionType       SessionType
+  durationMinutes   Int
+  pomodorosCompleted Int        @default(0)
+  startedAt         DateTime
+  endedAt           DateTime?
+  notes             String?
+  qualityRating     Int?
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic       Topic?       @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  earnedMeals EarnedMeal[]
+
+  @@map("studySessions")
+}
+
+model FoodReward {
+  id              String       @id @default(uuid())
+  name            String
+  nameVi          String
+  description     String
+  cuisineType     CuisineType
+  calories        Int
+  proteinG        Float
+  carbsG          Float
+  fatG            Float
+  imageUrl        String?
+  emoji           String
+  rarity          FoodRarity
+  unlockCondition String?
+  category        FoodCategory
+
+  earnedMeals EarnedMeal[]
+
+  @@map("foodRewards")
+}
+
+model EarnedMeal {
+  id              String   @id @default(uuid())
+  userId          String
+  foodRewardId    String
+  studySessionId  String?
+  earnedAt        DateTime @default(now())
+  multiplier      Float    @default(1.0)
+  effectiveCalories Int
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  foodReward    FoodReward    @relation(fields: [foodRewardId], references: [id], onDelete: Cascade)
+  studySession  StudySession? @relation(fields: [studySessionId], references: [id], onDelete: SetNull)
+
+  @@map("earnedMeals")
+}
+
+model Flashcard {
+  id               String    @id @default(uuid())
+  userId           String
+  topicId          String?
+  front            String
+  back             String
+  difficultyRating Float     @default(2.5)
+  repetitionCount  Int       @default(0)
+  intervalDays     Int       @default(0)
+  nextReviewDate   DateTime
+  lastReviewedAt   DateTime?
+  createdAt        DateTime  @default(now())
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic Topic? @relation(fields: [topicId], references: [id], onDelete: SetNull)
+
+  @@map("flashcards")
+}
+
+model FeynmanEntry {
+  id              String   @id @default(uuid())
+  userId          String
+  topicId         String?
+  conceptName     String
+  explanation     String
+  simplicityScore Int?
+  gapsIdentified  String[]
+  revisionCount   Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic Topic? @relation(fields: [topicId], references: [id], onDelete: SetNull)
+
+  @@map("feynmanEntries")
+}
+
+model Quiz {
+  id               String   @id @default(uuid())
+  userId           String
+  topicId          String?
+  scorePercentage  Float
+  passed           Boolean
+  questionsTotal   Int
+  questionsCorrect Int
+  timeTakenSeconds Int
+  wrongAnswers     Json
+  takenAt          DateTime @default(now())
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic Topic? @relation(fields: [topicId], references: [id], onDelete: SetNull)
+
+  @@map("quizzes")
+}
+
+model Achievement {
+  id             String                   @id @default(uuid())
+  name           String
+  description    String
+  iconUrl        String?
+  emoji          String
+  conditionType  AchievementConditionType
+  conditionValue Int
+  xpReward       Int
+
+  userAchievements UserAchievement[]
+
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id            String   @id @default(uuid())
+  userId        String
+  achievementId String
+  unlockedAt    DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@map("userAchievements")
+}
+
+model DailyLog {
+  id                  String   @id @default(uuid())
+  userId              String
+  date                DateTime @db.Date
+  totalMinutesStudied Int      @default(0)
+  totalCaloriesEarned Int      @default(0)
+  sessionsCompleted   Int      @default(0)
+  streakMaintained    Boolean  @default(false)
+  reviewCardsDue      Int      @default(0)
+  reviewCardsCompleted Int     @default(0)
+  moodRating          Int?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("dailyLogs")
+}
